@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plant Disease Detection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px;
+            margin: 30px 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: rgba(118, 75, 162, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .upload-area.dragover {
+            border-color: #764ba2;
+            background: rgba(118, 75, 162, 0.15);
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 3em;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            color: #666;
+            font-size: 1.1em;
+            margin-bottom: 15px;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            margin: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .image-preview {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 10px;
+            margin: 20px 0;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .results {
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 25px;
+            text-align: left;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .confidence-bar {
+            width: 100px;
+            height: 8px;
+            background: rgba(102, 126, 234, 0.2);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .loading {
+            display: none;
+            margin: 20px 0;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(102, 126, 234, 0.3);
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: rgba(255, 82, 82, 0.1);
+            color: #d32f2f;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #d32f2f;
+        }
+
+        .success {
+            background: rgba(76, 175, 80, 0.1);
+            color: #388e3c;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #4caf50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌱 Plant Disease Detection</h1>
+        <p style="color: #666; margin-bottom: 30px;">Upload an image of a plant leaf to detect diseases</p>
+        
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📸</div>
+            <div class="upload-text">Drag & drop an image here or click to browse</div>
+            <button class="btn">Choose Image</button>
+        </div>
+        
+        <input type="file" id="fileInput" accept="image/*">
+        
+        <div id="imagePreview"></div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Analyzing image...</p>
+        </div>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const imagePreview = document.getElementById('imagePreview');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+
+        // API endpoint - change this to match your API URL
+        const API_URL = 'http://127.0.0.1:8000';
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+        
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                showError('Please select an image file');
+                return;
+            }
+
+            // Show image preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                imagePreview.innerHTML = `<img src="${e.target.result}" class="image-preview" alt="Preview">`;
+            };
+            reader.readAsDataURL(file);
+
+            // Upload and analyze
+            uploadImage(file);
+        }
+
+        async function uploadImage(file) {
+            loading.style.display = 'block';
+            results.innerHTML = '';
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch(`${API_URL}/predict`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    showResults(data);
+                } else {
+                    showError('Prediction failed');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showError(`Failed to connect to API: ${error.message}`);
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        function showResults(data) {
+            const confidence = (data.confidence * 100).toFixed(1);
+            
+            let html = `
+                <div class="results">
+                    <h3 style="color: #333; margin-bottom: 20px;">🔍 Detection Results</h3>
+                    <div class="success">
+                        <strong>Primary Prediction:</strong> ${data.predicted_class}<br>
+                        <strong>Confidence:</strong> ${confidence}%
+                    </div>
+                    <h4 style="color: #666; margin: 20px 0 15px 0;">Top 3 Predictions:</h4>
+            `;
+            
+            data.top_3_predictions.forEach((pred, index) => {
+                const conf = (pred.confidence * 100).toFixed(1);
+                html += `
+                    <div class="result-item">
+                        <span>${index + 1}. ${pred.class}</span>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span>${conf}%</span>
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" style="width: ${conf}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            results.innerHTML = html;
+        }
+
+        function showError(message) {
+            results.innerHTML = `
+                <div class="error">
+                    <strong>Error:</strong> ${message}
+                    <br><br>
+                    <small>Make sure your FastAPI server is running on http://127.0.0.1:8000</small>
+                </div>
+            `;
+        }
+
+        // Test API connection on load
+        window.addEventListener('load', async () => {
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('API connected successfully:', data);
+                }
+            } catch (error) {
+                console.log('API not connected:', error.message);
+            }
+        });
+    </script>
+</body>
+</html>
